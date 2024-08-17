@@ -31,12 +31,26 @@ jobs:
         mkdir -p ~/.ssh/
         ssh-keyscan -H $REMOTE_HOST >> ~/.ssh/known_hosts
         
-        # Deploy files using sshpass
-        sshpass -p "$SSH_PASSWORD" rsync -avzc --delete -e "ssh -o StrictHostKeyChecking=no" ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_TARGET
+        # Sync files using rsync
+        sshpass -p "$SSH_PASSWORD" rsync -avzc --delete --exclude '.git' -e "ssh -o StrictHostKeyChecking=no" ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_TARGET
         
         # Run setup commands on VPS
         sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST << EOF
           cd $REMOTE_TARGET
+          
+          # Ensure the remote repo is up to date with local changes
+          if [ -d ".git" ]; then
+            git reset --hard HEAD  # Reset any local changes
+            git pull origin main    # Pull the latest changes from the remote repo
+          else
+            git init               # Initialize a git repository if not already present
+            git remote add origin git@your-remote-repo-url.git
+            git fetch
+            git checkout -b main
+            git pull origin main
+          fi
+
+          # Any additional commands like npm install, pm2 restart, etc.
           mkdir folder_by_actions
           cd folder_by_actions
           touch file_by_actions
