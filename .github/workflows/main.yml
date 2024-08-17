@@ -18,23 +18,24 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+    - name: Install sshpass
+      run: sudo apt-get update && sudo apt-get install -y sshpass
+
     - name: Deploy to VPS and Run Setup Commands
       env:
-        SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        SSH_PASSWORD: ${{ secrets.SERVER_SSH_PASSWORD }}
         REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
         REMOTE_USER: ${{ secrets.REMOTE_USER }}
         REMOTE_TARGET: ${{ secrets.REMOTE_TARGET }}
       run: |
         mkdir -p ~/.ssh/
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
         ssh-keyscan -H $REMOTE_HOST >> ~/.ssh/known_hosts
         
-        # Deploy files
-        rsync -avzc --delete -e "ssh -i ~/.ssh/deploy_key" ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_TARGET
+        # Deploy files using sshpass
+        sshpass -p "$SSH_PASSWORD" rsync -avzc --delete -e "ssh -o StrictHostKeyChecking=no" ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_TARGET
         
         # Run setup commands on VPS
-        ssh -i ~/.ssh/deploy_key $REMOTE_USER@$REMOTE_HOST << EOF
+        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST << EOF
           cd $REMOTE_TARGET
           mkdir folder_by_actions
           cd folder_by_actions
