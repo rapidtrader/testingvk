@@ -11,8 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v3
       with:
         name: testingvk
 
@@ -20,10 +18,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: testingvk
     - name: Deploy to VPS and Run Setup Commands
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
