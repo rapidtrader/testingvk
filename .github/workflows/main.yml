@@ -1,0 +1,48 @@
+name: Test, Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: testingvk
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: testingvk
+    - name: Deploy to VPS and Run Setup Commands
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+        REMOTE_USER: ${{ secrets.REMOTE_USER }}
+        REMOTE_TARGET: ${{ secrets.REMOTE_TARGET }}
+      run: |
+        mkdir -p ~/.ssh/
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H $REMOTE_HOST >> ~/.ssh/known_hosts
+        
+        # Deploy files
+        rsync -avzc --delete -e "ssh -i ~/.ssh/deploy_key" ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_TARGET
+        
+        # Run setup commands on VPS
+        ssh -i ~/.ssh/deploy_key $REMOTE_USER@$REMOTE_HOST << EOF
+          cd $REMOTE_TARGET
+          mkdir folder_by_actions
+          cd folder_by_actions
+          touch file_by_actions
+EOF
